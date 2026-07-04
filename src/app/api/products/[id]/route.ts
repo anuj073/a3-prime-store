@@ -48,6 +48,8 @@ export async function PUT(
       brand: body.brand !== undefined ? body.brand || null : existing.brand,
       featured: body.featured != null ? Boolean(body.featured) : existing.featured,
       active: body.active != null ? Boolean(body.active) : existing.active,
+      showPrice:
+        body.showPrice != null ? Boolean(body.showPrice) : existing.showPrice,
       rating: body.rating != null ? Number(body.rating) : existing.rating,
     },
   });

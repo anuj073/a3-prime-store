@@ -62,6 +62,7 @@ type FormState = {
   rating: string;
   featured: boolean;
   active: boolean;
+  showPrice: boolean;
   images: string[];
 };
 
@@ -78,6 +79,7 @@ function emptyForm(): FormState {
     rating: "0",
     featured: false,
     active: true,
+    showPrice: true,
     images: [],
   };
 }
@@ -96,6 +98,7 @@ function fromProduct(p: Product): FormState {
     rating: String(p.rating ?? 0),
     featured: !!p.featured,
     active: p.active !== false,
+    showPrice: p.showPrice !== false,
     images,
   };
 }
@@ -138,8 +141,18 @@ export function ProductFormDialog({
     const e: Record<string, string> = {};
     if (!form.name.trim()) e.name = "Name is required";
     if (!form.description.trim()) e.description = "Description is required";
-    if (!form.price.trim() || isNaN(Number(form.price)) || Number(form.price) < 0)
-      e.price = "Enter a valid price";
+    // Price is only required when the price is being shown to customers.
+    if (form.showPrice) {
+      if (!form.price.trim() || isNaN(Number(form.price)) || Number(form.price) < 0)
+        e.price = "Enter a valid price";
+    } else {
+      // When price hidden, allow empty (defaults to 0). Still validate format if provided.
+      if (
+        form.price.trim() &&
+        (isNaN(Number(form.price)) || Number(form.price) < 0)
+      )
+        e.price = "Enter a valid price (or leave blank)";
+    }
     if (
       form.originalPrice.trim() &&
       (isNaN(Number(form.originalPrice)) || Number(form.originalPrice) < 0)
@@ -166,7 +179,9 @@ export function ProductFormDialog({
       brand: form.brand.trim() || null,
       category: form.category === "__none__" ? null : form.category,
       description: form.description.trim(),
-      price: Number(form.price),
+      // When price is hidden and the admin left price blank, store 0 so the
+      // non-nullable Float column stays happy without showing a fake price.
+      price: form.price.trim() ? Number(form.price) : 0,
       originalPrice: form.originalPrice.trim()
         ? Number(form.originalPrice)
         : null,
@@ -175,6 +190,7 @@ export function ProductFormDialog({
       rating: Number(form.rating),
       featured: form.featured,
       active: form.active,
+      showPrice: form.showPrice,
       images: form.images,
       imageUrl,
     };
@@ -288,7 +304,11 @@ export function ProductFormDialog({
 
             {/* Pricing & stock */}
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Price (₹)" required error={errors.price}>
+              <Field
+                label="Price (₹)"
+                required={form.showPrice}
+                error={errors.price}
+              >
                 <Input
                   type="number"
                   inputMode="decimal"
@@ -296,8 +316,9 @@ export function ProductFormDialog({
                   min="0"
                   value={form.price}
                   onChange={(e) => update("price", e.target.value)}
-                  placeholder="0"
+                  placeholder={form.showPrice ? "0" : "Optional when hidden"}
                   className="h-10"
+                  disabled={!form.showPrice}
                 />
               </Field>
               <Field label="Original Price (₹)" error={errors.originalPrice}>
@@ -310,6 +331,7 @@ export function ProductFormDialog({
                   onChange={(e) => update("originalPrice", e.target.value)}
                   placeholder="Optional"
                   className="h-10"
+                  disabled={!form.showPrice}
                 />
               </Field>
               <Field label="Stock" required error={errors.stock}>
@@ -324,6 +346,23 @@ export function ProductFormDialog({
                   className="h-10"
                 />
               </Field>
+            </div>
+
+            {/* Show Price toggle */}
+            <div className="flex flex-col gap-1.5 rounded-lg border bg-muted/30 p-3">
+              <label className="flex cursor-pointer items-center justify-between gap-3">
+                <span className="flex flex-col">
+                  <span className="text-sm font-medium">Show Price</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    When off, the product shows &ldquo;Price on Request&rdquo;
+                    and customers call to order instead of adding to cart.
+                  </span>
+                </span>
+                <Switch
+                  checked={form.showPrice}
+                  onCheckedChange={(v) => update("showPrice", v)}
+                />
+              </label>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">

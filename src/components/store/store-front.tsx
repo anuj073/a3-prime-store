@@ -143,6 +143,7 @@ export function StoreFront() {
             products={products}
             loading={loadingProducts}
             onProductClick={handleProductClick}
+            contactPhone={settings?.phone}
           />
         </section>
       </main>
@@ -154,6 +155,7 @@ export function StoreFront() {
         product={selectedProduct}
         open={productModalOpen}
         onOpenChange={setProductModalOpen}
+        contactPhone={settings?.phone}
       />
       <CartDrawer onCheckout={handleCheckout} />
       <CheckoutModal

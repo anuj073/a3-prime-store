@@ -9,6 +9,7 @@ type ProductGridProps = {
   products: Product[];
   loading: boolean;
   onProductClick: (p: Product) => void;
+  contactPhone?: string;
 };
 
 function ProductCardSkeleton() {
@@ -30,6 +31,7 @@ export function ProductGrid({
   products,
   loading,
   onProductClick,
+  contactPhone,
 }: ProductGridProps) {
   if (loading) {
     return (
@@ -65,6 +67,7 @@ export function ProductGrid({
           key={product.id}
           product={product}
           onClick={onProductClick}
+          contactPhone={contactPhone}
         />
       ))}
     </div>

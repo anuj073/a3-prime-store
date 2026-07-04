@@ -42,6 +42,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ProductFormDialog } from "./product-form-dialog";
+import { ProductImage } from "@/components/store/product-image";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
 import type { Product, Category } from "@/lib/types";
@@ -294,23 +295,18 @@ export function ProductManager({ token }: ProductManagerProps) {
                 </TableRow>
               ) : (
                 filtered.map((p) => {
-                  const img = p.imageUrl || p.images?.[0] || null;
+                  const img = p.images?.[0] || p.imageUrl || null;
+                  const hidePrice = p.showPrice === false;
                   return (
                     <TableRow key={p.id} className="group">
                       <TableCell>
                         <div className="size-12 overflow-hidden rounded-lg border bg-muted">
-                          {img ? (
-                            <img
-                              src={img}
-                              alt={p.name}
-                              className="size-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="flex size-full items-center justify-center text-muted-foreground">
-                              <Package className="size-5" />
-                            </div>
-                          )}
+                          <ProductImage
+                            src={img}
+                            alt={p.name}
+                            className="size-full"
+                            iconClassName="size-5 opacity-40"
+                          />
                         </div>
                       </TableCell>
                       <TableCell>
@@ -337,16 +333,29 @@ export function ProductManager({ token }: ProductManagerProps) {
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-[var(--brand-blue)]">
-                            {formatPrice(p.price)}
-                          </span>
-                          {p.originalPrice && p.originalPrice > p.price && (
-                            <span className="text-[11px] text-muted-foreground line-through">
-                              {formatPrice(p.originalPrice)}
+                        {hidePrice ? (
+                          <div className="flex flex-col">
+                            <Badge
+                              className="w-fit gap-1 bg-amber-500 text-[10px] uppercase text-white hover:bg-amber-500"
+                            >
+                              On Request
+                            </Badge>
+                            <span className="mt-0.5 text-[11px] text-muted-foreground">
+                              Price hidden
                             </span>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col">
+                            <span className="font-semibold text-[var(--brand-blue)]">
+                              {formatPrice(p.price)}
+                            </span>
+                            {p.originalPrice && p.originalPrice > p.price && (
+                              <span className="text-[11px] text-muted-foreground line-through">
+                                {formatPrice(p.originalPrice)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
                         <StockBadge stock={p.stock} />

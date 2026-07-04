@@ -12,6 +12,7 @@ export type Product = {
   brand: string | null;
   featured: boolean;
   active: boolean;
+  showPrice: boolean;
   rating: number;
   createdAt: string;
   updatedAt: string;

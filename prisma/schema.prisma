@@ -24,6 +24,7 @@ model Product {
   brand         String?
   featured      Boolean  @default(false)
   active        Boolean  @default(true)
+  showPrice     Boolean  @default(true)
   rating        Float    @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

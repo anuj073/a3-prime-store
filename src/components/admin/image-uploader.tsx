@@ -5,6 +5,7 @@ import { Upload, X, Loader2, ImagePlus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { toast } from "sonner";
+import { ProductImage } from "@/components/store/product-image";
 
 type ImageUploaderProps = {
   value: string[];
@@ -96,11 +97,11 @@ export function ImageUploader({
               key={`${url}-${idx}`}
               className="group relative aspect-square overflow-hidden rounded-lg border bg-muted"
             >
-              <img
+              <ProductImage
                 src={url}
                 alt={`Image ${idx + 1}`}
-                className="size-full object-cover"
-                loading="lazy"
+                className="size-full"
+                iconClassName="size-5 opacity-40"
               />
               {idx === 0 && (
                 <span

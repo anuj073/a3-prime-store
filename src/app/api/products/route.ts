@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     brand,
     featured,
     active,
+    showPrice,
     rating,
   } = body;
 
@@ -75,6 +76,7 @@ export async function POST(req: NextRequest) {
       brand: brand || null,
       featured: Boolean(featured),
       active: active !== false,
+      showPrice: showPrice != null ? Boolean(showPrice) : true,
       rating: Number(rating) || 0,
     },
   });

@@ -6,10 +6,10 @@ import {
   Plus,
   PackagePlus,
   ShoppingCart,
-  Package,
   Star,
   Check,
   Truck,
+  Phone,
 } from "lucide-react";
 import {
   Dialog,
@@ -23,11 +23,13 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ProductImage } from "./product-image";
 
 type ProductModalProps = {
   product: Product | null;
   open: boolean;
   onOpenChange: (o: boolean) => void;
+  contactPhone?: string;
 };
 
 function formatPrice(p: number): string {
@@ -38,6 +40,7 @@ export function ProductModal({
   product,
   open,
   onOpenChange,
+  contactPhone,
 }: ProductModalProps) {
   const addToCart = useStore((s) => s.addToCart);
   const setCartOpen = useStore((s) => s.setCartOpen);
@@ -54,7 +57,6 @@ export function ProductModal({
   }, [product]);
 
   // Reset state during render when the product changes (avoids setState-in-effect).
-  // See: https://react.dev/reference/react/useState#storing-information-from-previous-renders
   const [prevProductId, setPrevProductId] = useState<string | null>(null);
   const [prevImageKey, setPrevImageKey] = useState<string>("");
   const imageKey = images.join("|");
@@ -80,8 +82,12 @@ export function ProductModal({
 
   const outOfStock = product.stock <= 0;
   const lowStock = !outOfStock && product.stock <= 5;
+  const hidePrice = product.showPrice === false;
+  const phone = contactPhone || "6391304606";
   const discount =
-    product.originalPrice && product.originalPrice > product.price
+    !hidePrice &&
+    product.originalPrice &&
+    product.originalPrice > product.price
       ? Math.round(
           ((product.originalPrice - product.price) / product.originalPrice) *
             100
@@ -89,7 +95,7 @@ export function ProductModal({
       : null;
 
   const handleAddToCart = () => {
-    if (outOfStock) return;
+    if (outOfStock || hidePrice) return;
     addToCart(
       {
         productId: product.id,
@@ -107,7 +113,7 @@ export function ProductModal({
   };
 
   const handleBuyNow = () => {
-    if (outOfStock) return;
+    if (outOfStock || hidePrice) return;
     addToCart(
       {
         productId: product.id,
@@ -138,23 +144,25 @@ export function ProductModal({
           {/* Image column */}
           <div className="flex flex-col gap-3 border-b p-4 md:border-b-0 md:border-r">
             <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-muted">
-              {activeImage ? (
-                <img
-                  src={activeImage}
-                  alt={product.name}
-                  className="size-full object-cover"
-                />
-              ) : (
-                <div className="flex size-full items-center justify-center text-muted-foreground">
-                  <Package className="size-16" />
-                </div>
-              )}
+              <ProductImage
+                src={activeImage}
+                alt={product.name}
+                className="size-full"
+                iconClassName="size-16 opacity-40"
+              />
               {discount && (
                 <Badge
                   className="absolute left-3 top-3 gap-0.5 px-2 py-1 text-xs font-bold text-white"
                   style={{ backgroundColor: "var(--brand-orange)" }}
                 >
                   -{discount}% OFF
+                </Badge>
+              )}
+              {hidePrice && (
+                <Badge
+                  className="absolute left-3 top-3 gap-0.5 bg-amber-500 px-2 py-1 text-xs font-bold uppercase tracking-wide text-white hover:bg-amber-500"
+                >
+                  Price on Request
                 </Badge>
               )}
               {product.featured && (
@@ -179,10 +187,11 @@ export function ProductModal({
                     )}
                     aria-label={`View image ${i + 1}`}
                   >
-                    <img
+                    <ProductImage
                       src={img}
                       alt={`${product.name} ${i + 1}`}
-                      className="size-full object-cover"
+                      className="size-full"
+                      iconClassName="size-5 opacity-40"
                     />
                   </button>
                 ))}
@@ -224,30 +233,48 @@ export function ProductModal({
             </div>
 
             {/* Price block */}
-            <div className="flex flex-wrap items-baseline gap-2">
-              <span className="text-3xl font-extrabold text-[var(--brand-blue)]">
-                {formatPrice(product.price)}
-              </span>
-              {product.originalPrice &&
-                product.originalPrice > product.price && (
-                  <>
-                    <span className="text-base text-muted-foreground line-through">
-                      {formatPrice(product.originalPrice)}
-                    </span>
-                    <Badge
-                      className="px-2 py-0.5 text-xs font-bold text-white"
-                      style={{ backgroundColor: "var(--brand-orange)" }}
-                    >
-                      Save {formatPrice(product.originalPrice - product.price)}
-                    </Badge>
-                  </>
-                )}
-              {product.unit && (
-                <span className="text-sm text-muted-foreground">
-                  / {product.unit}
+            {hidePrice ? (
+              <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 dark:border-amber-900 dark:bg-amber-950/40">
+                <p className="text-2xl font-extrabold text-amber-600">
+                  Price on Request
+                </p>
+                <p className="mt-1 text-sm text-amber-700 dark:text-amber-400">
+                  Call us at{" "}
+                  <a
+                    href={`tel:${phone.replace(/\s+/g, "")}`}
+                    className="font-semibold underline underline-offset-2"
+                  >
+                    {phone}
+                  </a>{" "}
+                  to know the price and place your order.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="text-3xl font-extrabold text-[var(--brand-blue)]">
+                  {formatPrice(product.price)}
                 </span>
-              )}
-            </div>
+                {product.originalPrice &&
+                  product.originalPrice > product.price && (
+                    <>
+                      <span className="text-base text-muted-foreground line-through">
+                        {formatPrice(product.originalPrice)}
+                      </span>
+                      <Badge
+                        className="px-2 py-0.5 text-xs font-bold text-white"
+                        style={{ backgroundColor: "var(--brand-orange)" }}
+                      >
+                        Save {formatPrice(product.originalPrice - product.price)}
+                      </Badge>
+                    </>
+                  )}
+                {product.unit && (
+                  <span className="text-sm text-muted-foreground">
+                    / {product.unit}
+                  </span>
+                )}
+              </div>
+            )}
 
             {/* Stock status */}
             <div>
@@ -277,65 +304,80 @@ export function ProductModal({
               </div>
             )}
 
-            {/* Quantity selector */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm font-medium text-foreground">
-                Quantity:
-              </span>
-              <div className="flex items-center gap-1 rounded-lg border">
-                <button
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  disabled={outOfStock || qty <= 1}
-                  className="flex size-9 items-center justify-center rounded-l-lg text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus className="size-4" />
-                </button>
-                <span
-                  className="min-w-10 text-center text-sm font-semibold"
-                  aria-live="polite"
-                >
-                  {qty}
+            {/* Quantity selector (only when priced) */}
+            {!hidePrice && (
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium text-foreground">
+                  Quantity:
                 </span>
-                <button
-                  onClick={() =>
-                    setQty((q) => Math.min(product.stock, q + 1))
-                  }
-                  disabled={outOfStock || qty >= product.stock}
-                  className="flex size-9 items-center justify-center rounded-r-lg text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
-                  aria-label="Increase quantity"
-                >
-                  <Plus className="size-4" />
-                </button>
+                <div className="flex items-center gap-1 rounded-lg border">
+                  <button
+                    onClick={() => setQty((q) => Math.max(1, q - 1))}
+                    disabled={outOfStock || qty <= 1}
+                    className="flex size-9 items-center justify-center rounded-l-lg text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus className="size-4" />
+                  </button>
+                  <span
+                    className="min-w-10 text-center text-sm font-semibold"
+                    aria-live="polite"
+                  >
+                    {qty}
+                  </span>
+                  <button
+                    onClick={() =>
+                      setQty((q) => Math.min(product.stock, q + 1))
+                    }
+                    disabled={outOfStock || qty >= product.stock}
+                    className="flex size-9 items-center justify-center rounded-r-lg text-foreground transition-colors hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus className="size-4" />
+                  </button>
+                </div>
+                {!outOfStock && (
+                  <span className="text-xs text-muted-foreground">
+                    Max {product.stock}
+                  </span>
+                )}
               </div>
-              {!outOfStock && (
-                <span className="text-xs text-muted-foreground">
-                  Max {product.stock}
-                </span>
-              )}
-            </div>
+            )}
 
             {/* CTA buttons */}
-            <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
-              <Button
-                onClick={handleAddToCart}
-                disabled={outOfStock}
-                className="h-12 flex-1 gap-2 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.01] disabled:opacity-50"
-                style={{ backgroundColor: "var(--brand-orange)" }}
-              >
-                <PackagePlus className="size-5" />
-                Add to Cart
-              </Button>
-              <Button
-                onClick={handleBuyNow}
-                disabled={outOfStock}
-                variant="default"
-                className="h-12 flex-1 gap-2 text-base font-semibold shadow-sm"
-              >
-                <ShoppingCart className="size-5" />
-                Buy Now
-              </Button>
-            </div>
+            {hidePrice ? (
+              <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
+                <a
+                  href={`tel:${phone.replace(/\s+/g, "")}`}
+                  className="flex h-12 flex-1 items-center justify-center gap-2 rounded-md text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.01]"
+                  style={{ backgroundColor: "var(--brand-blue)" }}
+                >
+                  <Phone className="size-5" />
+                  Call to Order
+                </a>
+              </div>
+            ) : (
+              <div className="mt-auto flex flex-col gap-2 pt-2 sm:flex-row">
+                <Button
+                  onClick={handleAddToCart}
+                  disabled={outOfStock}
+                  className="h-12 flex-1 gap-2 text-base font-semibold text-white shadow-sm transition-transform hover:scale-[1.01] disabled:opacity-50"
+                  style={{ backgroundColor: "var(--brand-orange)" }}
+                >
+                  <PackagePlus className="size-5" />
+                  Add to Cart
+                </Button>
+                <Button
+                  onClick={handleBuyNow}
+                  disabled={outOfStock}
+                  variant="default"
+                  className="h-12 flex-1 gap-2 text-base font-semibold shadow-sm"
+                >
+                  <ShoppingCart className="size-5" />
+                  Buy Now
+                </Button>
+              </div>
+            )}
           </div>
         </div>
       </DialogContent>

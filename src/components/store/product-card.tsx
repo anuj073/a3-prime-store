@@ -1,6 +1,6 @@
 "use client";
 
-import { PackagePlus, Package, Star } from "lucide-react";
+import { PackagePlus, Star, Phone } from "lucide-react";
 import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,10 +9,12 @@ import { useStore } from "@/lib/store";
 import { toast } from "sonner";
 import type { Product } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { ProductImage } from "./product-image";
 
 type ProductCardProps = {
   product: Product;
   onClick: (p: Product) => void;
+  contactPhone?: string;
 };
 
 function formatPrice(p: number): string {
@@ -57,15 +59,19 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-export function ProductCard({ product, onClick }: ProductCardProps) {
+export function ProductCard({ product, onClick, contactPhone }: ProductCardProps) {
   const addToCart = useStore((s) => s.addToCart);
   const outOfStock = product.stock <= 0;
-  const discount = discountPct(product.price, product.originalPrice);
-  const image = product.imageUrl || product.images?.[0] || null;
+  const hidePrice = product.showPrice === false;
+  const discount = hidePrice
+    ? null
+    : discountPct(product.price, product.originalPrice);
+  const image = product.images?.[0] || product.imageUrl || null;
+  const phone = contactPhone || "6391304606";
 
   const handleAddToCart = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (outOfStock) return;
+    if (outOfStock || hidePrice) return;
     addToCart({
       productId: product.id,
       name: product.name,
@@ -92,26 +98,29 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
       >
         {/* Image area */}
         <div className="relative aspect-square w-full overflow-hidden bg-muted">
-          {image ? (
-            <img
-              src={image}
-              alt={product.name}
-              className="size-full object-cover transition-transform duration-300 group-hover:scale-105"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex size-full items-center justify-center text-muted-foreground">
-              <Package className="size-10" />
-            </div>
-          )}
+          <ProductImage
+            src={image}
+            alt={product.name}
+            className="size-full transition-transform duration-300 group-hover:scale-105"
+            iconClassName="size-10 opacity-40"
+          />
 
-          {/* Top-left: discount */}
+          {/* Top-left: discount (only when price is shown) */}
           {discount && (
             <Badge
               className="absolute left-2 top-2 gap-0.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold text-white shadow"
               style={{ backgroundColor: "var(--brand-orange)" }}
             >
               -{discount}%
+            </Badge>
+          )}
+
+          {/* Top-left: "Price on Request" pill when price hidden */}
+          {hidePrice && (
+            <Badge
+              className="absolute left-2 top-2 gap-0.5 rounded-md bg-amber-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow hover:bg-amber-500"
+            >
+              On Request
             </Badge>
           )}
 
@@ -151,21 +160,32 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
 
           <StarRating rating={product.rating} />
 
-          <div className="mt-1 flex items-baseline gap-1.5">
-            <span className="text-lg font-bold text-[var(--brand-blue)]">
-              {formatPrice(product.price)}
-            </span>
-            {product.originalPrice && product.originalPrice > product.price && (
-              <span className="text-xs text-muted-foreground line-through">
-                {formatPrice(product.originalPrice)}
+          {hidePrice ? (
+            <div className="mt-1">
+              <p className="text-sm font-bold text-amber-600">
+                Price on Request
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Call us for the best price
+              </p>
+            </div>
+          ) : (
+            <div className="mt-1 flex items-baseline gap-1.5">
+              <span className="text-lg font-bold text-[var(--brand-blue)]">
+                {formatPrice(product.price)}
               </span>
-            )}
-            {product.unit && (
-              <span className="text-xs text-muted-foreground">
-                / {product.unit}
-              </span>
-            )}
-          </div>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-xs text-muted-foreground line-through">
+                  {formatPrice(product.originalPrice)}
+                </span>
+              )}
+              {product.unit && (
+                <span className="text-xs text-muted-foreground">
+                  / {product.unit}
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Stock hint */}
           {!outOfStock && product.stock <= 5 && (
@@ -174,16 +194,29 @@ export function ProductCard({ product, onClick }: ProductCardProps) {
             </p>
           )}
 
-          <Button
-            onClick={handleAddToCart}
-            disabled={outOfStock}
-            className="mt-2 h-9 w-full gap-1.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] disabled:opacity-50"
-            style={{ backgroundColor: "var(--brand-orange)" }}
-            aria-label={`Add ${product.name} to cart`}
-          >
-            <PackagePlus className="size-4" />
-            {outOfStock ? "Sold Out" : "Add to Cart"}
-          </Button>
+          {hidePrice ? (
+            <a
+              href={`tel:${phone.replace(/\s+/g, "")}`}
+              onClick={(e) => e.stopPropagation()}
+              className="mt-2 flex h-9 w-full items-center justify-center gap-1.5 rounded-md text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: "var(--brand-blue)" }}
+              aria-label={`Call to order ${product.name}`}
+            >
+              <Phone className="size-4" />
+              Call to Order
+            </a>
+          ) : (
+            <Button
+              onClick={handleAddToCart}
+              disabled={outOfStock}
+              className="mt-2 h-9 w-full gap-1.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02] disabled:opacity-50"
+              style={{ backgroundColor: "var(--brand-orange)" }}
+              aria-label={`Add ${product.name} to cart`}
+            >
+              <PackagePlus className="size-4" />
+              {outOfStock ? "Sold Out" : "Add to Cart"}
+            </Button>
+          )}
         </div>
       </Card>
     </motion.div>
