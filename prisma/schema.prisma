@@ -1,0 +1,86 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id            String   @id @default(cuid())
+  name          String
+  description   String   @default("")
+  price         Float
+  originalPrice Float?
+  category      String?
+  imageUrl      String?
+  images        String   @default("[]") // JSON array of image URLs
+  stock         Int      @default(0)
+  unit          String?  // kg, pcs, liter, packet, etc.
+  brand         String?
+  featured      Boolean  @default(false)
+  active        Boolean  @default(true)
+  rating        Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([category])
+  @@index([featured])
+  @@index([active])
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  imageUrl    String?
+  icon        String?  // lucide icon name
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model StoreSettings {
+  id            String   @id @default("singleton")
+  storeName     String   @default("A3 Prime Store")
+  tagline       String   @default("Your Trusted Neighborhood Store")
+  ownerName     String   @default("Akash Maurya")
+  address       String   @default("Bazar Neorhia, Jaunpur - 222128, Uttar Pradesh")
+  phone         String   @default("6391304606")
+  email         String?
+  logoUrl       String?
+  heroTitle     String   @default("Fresh Products. Honest Prices.")
+  heroSubtitle  String   @default("Everything your home needs, delivered with care from A3 Prime Store.")
+  heroImageUrl  String?
+  announcement  String?
+  adminPassword String   @default("admin123")
+  whatsapp      String?
+  instagram     String?
+  facebook      String?
+  freeShipMsg   String   @default("Free local delivery on orders above ₹499")
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Order {
+  id             String   @id @default(cuid())
+  orderNumber    String   @unique
+  customerName   String
+  customerPhone  String
+  customerAddress String
+  customerNote   String?
+  items          String   // JSON of cart items
+  subtotal       Float
+  deliveryCharge Float   @default(0)
+  total          Float
+  status         String   @default("pending") // pending, confirmed, delivered, cancelled
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+}
