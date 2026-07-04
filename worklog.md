@@ -232,3 +232,32 @@ Stage Summary:
   - `/home/z/my-project/src/lib/api.ts` (added `resetPassword` method).
   - `/home/z/my-project/src/components/admin/login-dialog.tsx` (added "Forgot password?" link + recovery sub-dialog).
 - Lint: 0 errors / 0 warnings. TypeScript: 0 errors in `src/`. curl tests: all four pass (login ✅, reset with correct owner ✅, reset with wrong owner returns 401 ✅, login still works after reset ✅). dev.log: clean, no errors.
+
+---
+Task ID: 5
+Agent: general-purpose
+Task: Stop persisting admin login so shared links never auto-open admin
+
+Work Log:
+- Read `/home/z/my-project/worklog.md` to understand prior tasks (1–4) and confirmed the Zustand store + persist setup lives in `src/lib/store.ts`.
+- Read current `src/lib/store.ts` — confirmed it persisted `isAdmin`, `adminToken`, `cart`, and `view` to localStorage under key `a3-prime-store` via `partialize`. This caused admin auth to survive page reloads / browser restarts, so any shared-device visitor who opened the site would land in the admin panel already-logged-in.
+- Verified dependent files to confirm no other code relies on persisted admin state:
+  - `src/app/page.tsx`: reads `view` from store, uses `mounted` guard for hydration. With `view` no longer persisted, it defaults to `"store"` on every load — `mounted` guard still works. No change needed.
+  - `src/components/admin/admin-panel.tsx`: reads `isAdmin` + `adminToken`; with no persistence they default to `false`/`null` → login gate is shown. Correct behavior. No change needed.
+  - `src/components/store/header.tsx`: Admin button calls `setView("admin")` in-memory. Correct. No change needed.
+- Edited `src/lib/store.ts` persist options:
+  - `partialize` now returns ONLY `{ cart: state.cart }`. Admin auth (`isAdmin`, `adminToken`) and `view` are no longer saved to localStorage.
+  - Added a custom `merge: (persisted, current) => ...` function that only restores `cart` from persisted state and explicitly ignores any stale `isAdmin`, `adminToken`, or `view` values. This handles existing users whose localStorage still contains the OLD shape `{ isAdmin: true, adminToken, cart, view }` from before the fix — without `merge`, Zustand's default rehydration would shallow-merge the entire stored object over the initial state and re-hydrate `isAdmin: true` once, defeating the fix. With `merge`, even a stale localStorage blob is reduced to just `cart` on hydration.
+  - State shape, actions, and store name are unchanged. `isAdmin`, `adminToken`, and `view` still live in memory at runtime; they just aren't persisted.
+- Ran `bun run lint` — passed (eslint printed only the command echo, no errors).
+- Ran `bunx tsc --noEmit --skipLibCheck | grep src/lib/store` — empty output, no type errors in the store file.
+- Checked `tail -40 /home/z/my-project/dev.log` — Next.js compiled successfully (`✓ Compiled in 157ms`) and `GET / 200` requests succeed. No compile/runtime errors.
+- Re-read the final `src/lib/store.ts` to confirm both the `partialize: (state) => ({ cart: state.cart })` and the `merge` function are in place.
+
+Stage Summary:
+- Single-file change in `src/lib/store.ts`: `partialize` now persists only `cart`; a custom `merge` ensures any stale `isAdmin`/`adminToken`/`view` in existing users' localStorage is ignored on rehydration.
+- Resulting behavior: every page load starts with `isAdmin=false`, `adminToken=null`, `view="store"` (defaults), so the site always opens at the storefront, logged out. To access admin, the user must click the Admin button and enter the password each session. Shared shop links will never auto-open the admin panel.
+- Shopping cart is still persisted to localStorage (`cart` key inside `a3-prime-store`), so customers do not lose their cart across visits.
+- Backward compatibility: existing users with the OLD localStorage blob are protected by the `merge` function — stale admin auth and view state are silently dropped on the next load, and only `cart` is honored.
+- Lint and type check both pass; dev server compiles and serves the site with no errors.
+- No changes were needed (or made) to `page.tsx`, `admin-panel.tsx`, or `header.tsx`.

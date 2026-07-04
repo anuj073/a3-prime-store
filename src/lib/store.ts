@@ -78,12 +78,23 @@ export const useStore = create<AppState>()(
     }),
     {
       name: "a3-prime-store",
-      partialize: (state) => ({
-        isAdmin: state.isAdmin,
-        adminToken: state.adminToken,
-        cart: state.cart,
-        view: state.view,
-      }),
+      // Only persist the shopping cart. Admin auth (isAdmin, adminToken) and
+      // view mode are intentionally NOT persisted so that every page load
+      // starts at the storefront, logged out — shared links never auto-open
+      // admin, and the admin password must be entered each session.
+      partialize: (state) => ({ cart: state.cart }),
+      merge: (persisted, current) => {
+        // Only restore `cart` from persisted state. Explicitly ignore any
+        // stale `isAdmin`, `adminToken`, or `view` values that may exist in
+        // localStorage from previous versions of this app (or from a prior
+        // login on a shared device). This guarantees a fresh, logged-out
+        // storefront on every load.
+        const persistedState = (persisted as Partial<AppState>) || {};
+        return {
+          ...current,
+          cart: persistedState.cart ?? current.cart,
+        };
+      },
     }
   )
 );
