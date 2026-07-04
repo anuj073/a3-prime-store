@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyAdmin, adminErrorResponse } from "@/lib/auth";
 
+// Never cache product listings — new/edited products must appear in every
+// browser immediately.
+export const dynamic = "force-dynamic";
+
+const NO_CACHE = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category");
@@ -30,7 +40,8 @@ export async function GET(req: NextRequest) {
     products.map((p) => ({
       ...p,
       images: safeParse(p.images),
-    }))
+    })),
+    { headers: NO_CACHE }
   );
 }
 

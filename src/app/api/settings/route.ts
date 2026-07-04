@@ -2,6 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { verifyAdmin, adminErrorResponse } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+
+const NO_CACHE = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
 // Public: returns store settings (minus admin password)
 export async function GET() {
   let settings = await db.storeSettings.findUnique({
@@ -13,7 +21,7 @@ export async function GET() {
     });
   }
   const { adminPassword, ...publicSettings } = settings;
-  return NextResponse.json(publicSettings);
+  return NextResponse.json(publicSettings, { headers: NO_CACHE });
 }
 
 // Admin: update store settings

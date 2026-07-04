@@ -428,3 +428,25 @@ Stage Summary:
 - Fix: src-change reset + auto-retry + click-to-retry in src/components/store/product-image.tsx.
 - Verified: Toilet Cleaner edit dialog shows real image (naturalWidth 900); fresh upload shows (naturalWidth 1200); 0 placeholders.
 - Note: admin password is currently "Akash@222128" (user changed it from admin123).
+
+---
+Task ID: 10
+Agent: general-purpose
+Task: Fix uploaded products not showing in other browsers (API response caching)
+
+Work Log:
+- Analyzed user screenshot (pasted_image_1783167239395.png): Edit Product dialog showing image placeholder with refresh icon (auto-retry exhausted).
+- Root cause investigation: checked HTTP response headers of GET /api/products — found NO Cache-Control header. Without explicit no-cache directives, browsers apply heuristic caching of the JSON product list. So when admin adds/edits a product in one browser, other browsers keep showing the stale cached list (without the new product) until their cache expires. This is why "in z.ai browser it shows but in other browsers it doesn't."
+- Fix applied to client-side fetcher (src/lib/api.ts): added `cache: "no-store"` to fetchJson so every browser request bypasses HTTP cache and hits the server.
+- Fix applied to all GET API routes (products, categories, settings, orders): added `export const dynamic = "force-dynamic"` and `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` + `Pragma: no-cache` + `Expires: 0` headers on responses.
+- Verified via curl: all GET API routes now return `cache-control: no-store, no-cache, must-revalidate, max-age=0`.
+- End-to-end test: created a test product via API, confirmed it immediately appears in GET /api/products (count went from 7 to 8), then deleted it.
+- Browser test: store front loads products via no-store fetch; product list is fresh on every load.
+- Lint: clean (0 errors, 0 warnings).
+- Combined with task 9's ProductImage auto-retry, both the product list AND product images now update reliably across all browsers.
+
+Stage Summary:
+- Root cause: GET /api/products (and other GET routes) had no Cache-Control header → browsers heuristically cached the JSON → new/edited products invisible in other browsers.
+- Fix: `cache: "no-store"` on client fetches + `Cache-Control: no-store` headers + `dynamic = "force-dynamic"` on products/categories/settings/orders GET routes.
+- Verified: curl confirms no-cache headers; test product immediately visible in API; store front fetches fresh data.
+- Files changed: src/lib/api.ts, src/app/api/products/route.ts, src/app/api/categories/route.ts, src/app/api/settings/route.ts, src/app/api/orders/route.ts.

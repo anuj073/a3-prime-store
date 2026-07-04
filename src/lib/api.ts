@@ -4,6 +4,9 @@ const API_BASE = "";
 
 async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE}${url}`, {
+    // Always bypass the browser HTTP cache so freshly added/edited products,
+    // categories, settings and orders show up in every browser immediately.
+    cache: "no-store",
     headers: { "Content-Type": "application/json", ...(options?.headers || {}) },
     ...options,
   });
