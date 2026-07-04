@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyAdmin, adminErrorResponse } from "@/lib/auth";
-import sharp from "sharp";
-import fs from "fs/promises";
-import path from "path";
-import { randomUUID } from "crypto";
+import { v2 as cloudinary } from "cloudinary";
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export async function POST(req: NextRequest) {
   if (!(await verifyAdmin(req))) return adminErrorResponse();
@@ -26,40 +29,32 @@ export async function POST(req: NextRequest) {
       { status: 400 }
     );
 
-  const buffer = Buffer.from(await file.arrayBuffer());
-
-  // Optimize image with sharp - resize to max 1200px, convert to webp
-  const ext = path.extname(file.name).toLowerCase() || ".jpg";
-  const fileName = `${randomUUID()}.webp`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads");
-
   try {
-    await fs.mkdir(uploadDir, { recursive: true });
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const b64 = `data:${file.type};base64,${buffer.toString("base64")}`;
 
-    let processed: Buffer;
-    try {
-      processed = await sharp(buffer)
-        .resize(1200, 1200, { fit: "inside", withoutEnlargement: true })
-        .webp({ quality: 82 })
-        .toBuffer();
-    } catch {
-      // If sharp fails (e.g., svg), just save original
-      processed = buffer;
-    }
+    const result = await cloudinary.uploader.upload(b64, {
+      folder: "a3-prime-store",
+      resource_type: "image",
+      transformation: [
+        { width: 1200, height: 1200, crop: "limit", quality: "auto:good" },
+      ],
+    });
 
-    await fs.writeFile(path.join(uploadDir, fileName), processed);
-
-    const publicUrl = `/uploads/${fileName}`;
     return NextResponse.json({
-      url: publicUrl,
+      url: result.secure_url,
+      publicId: result.public_id,
       originalName: file.name,
-      size: processed.length,
-      format: ext.replace(".", ""),
+      size: result.bytes,
+      format: result.format,
     });
   } catch (e) {
     console.error("Upload error:", e);
     return NextResponse.json(
-      { error: "Failed to upload file" },
+      {
+        error:
+          "Failed to upload image. Ensure CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET are set in Vercel environment variables.",
+      },
       { status: 500 }
     );
   }
