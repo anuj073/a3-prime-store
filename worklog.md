@@ -261,3 +261,27 @@ Stage Summary:
 - Backward compatibility: existing users with the OLD localStorage blob are protected by the `merge` function — stale admin auth and view state are silently dropped on the next load, and only `cart` is honored.
 - Lint and type check both pass; dev server compiles and serves the site with no errors.
 - No changes were needed (or made) to `page.tsx`, `admin-panel.tsx`, or `header.tsx`.
+
+---
+Task ID: 6
+Agent: general-purpose
+Task: Create a ZIP archive of the entire A3 Prime Store website code
+
+Work Log:
+- Read existing worklog.md to understand project context (foundation, store-front, admin-panel, server-runtime, seed/data, etc.).
+- Surveyed project root with `ls -la` and `du -sh` to size every entry. Largest items: node_modules (1.2G), .next (391M), skills (61M), .git (5.5M), agent-ctx (1.7M), upload/ root (2.1M stray PNG), dev.log (132K).
+- Verified `zip` (Info-ZIP 3.0) is installed at /usr/bin/zip — no need for tar.gz fallback.
+- Inspected key dirs: db/custom.db (65KB SQLite with user data), prisma/schema.prisma, public/brand/{logo.png,hero.png}, public/uploads/ (3 webp product images), examples/websocket/, mini-services/.gitkeep, .env (DATABASE_URL=file:/home/z/my-project/db/custom.db).
+- Grep'd src/ to confirm the app's upload route (src/app/api/upload/route.ts) writes to `public/uploads/`, so the stray root-level `upload/` dir (2MB AI-generated PNG leftover) is NOT used by the app and was excluded.
+- Decided to EXCLUDE skills/ (61MB > 50MB threshold per task instructions) plus other internal/non-website dirs: tool-results/ (agent tool outputs), .zscripts/ (agent dev scripts + dev.log/dev.pid), tsconfig.tsbuildinfo (build cache), and root upload/ (stray).
+- Created the archive from project root: `zip -r a3-prime-store.zip . -x node_modules/* .next/* dev.log server.log .git/* agent-ctx/* tool-results/* .zscripts/* skills/* upload/* tsconfig.tsbuildinfo a3-prime-store.zip *.DS_Store */.DS_Store`.
+- Verified the archive: 831K, 146 entries, 111 files under src/.
+- Confirmed all key items present: src/ tree (app/, components/, lib/, hooks), prisma/schema.prisma, db/custom.db (65536 bytes — user products/orders/settings preserved), public/brand/{logo.png,hero.png}, public/uploads/*.webp, package.json, .env, bun.lock, tsconfig.json, next.config.ts, tailwind.config.ts, postcss.config.mjs, eslint.config.mjs, components.json, Caddyfile, .gitignore, next-env.d.ts, worklog.md, examples/websocket/, mini-services/.gitkeep, download/README.md.
+- Confirmed zero leakage from excluded dirs (node_modules/.next/.git count = 0) and that root upload/ stray dir is absent (only src/app/api/upload route + public/uploads images remain).
+
+Stage Summary:
+- ZIP path: /home/z/my-project/a3-prime-store.zip
+- Size: 831K (831,705 bytes), 146 entries / 145 files
+- Included: src/ (111 files: app, components, lib, hooks), prisma/schema.prisma, db/custom.db (SQLite with user data), public/ (brand/logo.png, brand/hero.png, uploads/*.webp, logo.svg, robots.txt), all config (package.json, bun.lock, tsconfig.json, next.config.ts, tailwind.config.ts, postcss.config.mjs, eslint.config.mjs, components.json, Caddyfile, .env, .gitignore, next-env.d.ts), examples/websocket/, mini-services/, download/, worklog.md.
+- Excluded: node_modules/ (1.2G), .next/ (391M), .git/ (5.5M), skills/ (61M, over 50MB cap), agent-ctx/, tool-results/, .zscripts/ (internal agent scripts/logs), dev.log & .zscripts/dev.log, root upload/ (stray 2MB AI image, unused by app), tsconfig.tsbuildinfo, *.DS_Store, the zip itself.
+- Run instructions for user: `unzip a3-prime-store.zip -d a3-prime-store && cd a3-prime-store && bun install && bun run dev` — the existing db/custom.db is included so products/orders/settings are preserved; no `bun run db:push` needed unless they want a fresh schema. Update `.env` DATABASE_URL path if extracting to a different absolute directory.
