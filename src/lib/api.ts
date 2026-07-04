@@ -49,11 +49,6 @@ export const api = {
   // Auth
   login: (password: string) =>
     fetchJson<{ token: string; storeName: string }>(`/api/auth`, { method: "POST", body: JSON.stringify({ password }) }),
-  resetPassword: (ownerName: string) =>
-    fetchJson<{ success: boolean; message: string }>(`/api/auth/reset`, {
-      method: "POST",
-      body: JSON.stringify({ ownerName }),
-    }),
 
   // Orders
   getOrders: (token: string) =>

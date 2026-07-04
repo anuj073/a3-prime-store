@@ -369,3 +369,36 @@ Stage Summary:
   - Created 1 demo product "Premium Gift Hamper (Custom)" with `showPrice:false` and 2 images for live verification on the storefront. (User can delete it via Admin → Products if not wanted.)
 - Verification results: `bun run lint` clean (0/0). `bunx tsc --noEmit --skipLibCheck` clean for `src/`. curl: POST/DELETE with `showPrice:false` works (200 + field persisted). Agent Browser: confirmed (a) no broken images anywhere + Package-icon placeholders for image-less products, (b) hidden-price product shows "Price on Request" + "Call to Order" tel link on both card and modal, (c) normal priced product still shows price + Add to Cart + Buy Now, (d) admin Add Product form has the Show Price switch and disables price inputs when off, (e) admin products table shows "On Request" badge for hidden-price products. Screenshots in `/home/z/my-project/agent-ctx/task7-*.png`.
 - Admin password reminder: `admin123` (reset back to default during this task; was `Akash@222128` before).
+
+---
+Task ID: 8
+Agent: general-purpose
+Task: Remove the Forgot Password option from admin login
+
+Work Log:
+- Read worklog.md for context and read the three affected files: src/components/admin/login-dialog.tsx, src/lib/api.ts, src/app/api/auth/reset/route.ts.
+- Grep-confirmed the only references to resetPassword / /api/auth/reset / "Forgot password" live in those three files (no other call sites).
+- Rewrote src/components/admin/login-dialog.tsx to remove the entire recovery flow:
+  - Removed imports: KeyRound, User (lucide-react) — they were only used by the recovery sub-dialog. Kept Eye, EyeOff, Lock, ArrowLeft, ShieldCheck, Loader2.
+  - Removed state: resetOpen, ownerName, resetLoading.
+  - Removed handlers: handleResetPassword and closeReset.
+  - Removed the "Forgot password?" link button (and its KeyRound icon).
+  - Removed the entire recovery sub-dialog (the second <Dialog> asking for owner name).
+  - Dropped the now-unneeded React fragment (<>) wrapper since only one Dialog remains.
+  - Centered the "Default password: admin123" hint paragraph (previously in a justify-between row with the forgot link). Kept: BrandLogo, Admin Login title, password input + show/hide toggle, Login button, default-password hint, Back to Store link.
+- Deleted the reset API route: rm -rf src/app/api/auth/reset (the reset/ folder is gone; src/app/api/auth now contains only route.ts).
+- Removed the resetPassword method from the api object in src/lib/api.ts (the // Auth section now exposes only login).
+- Ran `bun run lint` — clean (exit 0, no warnings/errors).
+- Ran `bunx tsc --noEmit --skipLibCheck`. First run surfaced a stale generated file (.next/types/validator.ts referencing the deleted route); cleared `.next/types` and re-ran — no type errors in src/.
+- Verified dev server: tail of dev.log shows healthy 200 GET / responses; `curl http://localhost:3000/` returns 200; `curl -X POST http://localhost:3000/api/auth/reset` returns 404 (route gone).
+- Browser verification with agent-browser: opened http://localhost:3000/, clicked "Open admin panel" (header button) which shows the admin-panel gate, clicked "Sign In" to open the LoginDialog. Snapshot confirmed the dialog contains only: "Admin Login" heading, description, Password label + textbox, Show password button, Login button, "Default password: admin123" hint, and Back to Store button. JS eval confirmed document.body.innerText.includes('Forgot password') === false and includes('Default password') === true.
+
+Stage Summary:
+- Files changed:
+  - src/components/admin/login-dialog.tsx — removed forgot-password link, recovery sub-dialog, related state/handlers, and now-unused lucide imports (KeyRound, User). Single Dialog now holds only password field + show/hide toggle + Login button + default-password hint + Back to Store.
+  - src/lib/api.ts — removed the resetPassword method from the api object.
+- Files deleted:
+  - src/app/api/auth/reset/route.ts and the src/app/api/auth/reset/ directory.
+- Lint: passes (exit 0). Type check: passes after clearing stale .next/types cache.
+- HTTP verification: home page 200, POST /api/auth/reset now 404.
+- Browser verification: LoginDialog no longer shows "Forgot password?" and still shows the default-password hint and Back to Store link.
