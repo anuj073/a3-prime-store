@@ -450,3 +450,32 @@ Stage Summary:
 - Fix: `cache: "no-store"` on client fetches + `Cache-Control: no-store` headers + `dynamic = "force-dynamic"` on products/categories/settings/orders GET routes.
 - Verified: curl confirms no-cache headers; test product immediately visible in API; store front fetches fresh data.
 - Files changed: src/lib/api.ts, src/app/api/products/route.ts, src/app/api/categories/route.ts, src/app/api/settings/route.ts, src/app/api/orders/route.ts.
+
+---
+Task ID: 11
+Agent: general-purpose
+Task: Fix stuck image placeholder (refresh icon) in admin Edit Product dialog
+
+Work Log:
+- Analyzed user screenshot (pasted_image_1783167759622.png): Edit Product dialog showed COVER thumbnail as a refresh-icon placeholder (auto-retry exhausted state from task 9's ProductImage).
+- Verified image files exist on disk and serve correctly via both port 3000 and gateway port 81 (valid WebP, 200 OK, correct content-type).
+- Verified DB has correct URLs (imageUrl and images[] match for Amul Butter and Toilet Cleaner).
+- Root cause: the task-9 ProductImage component's error state could get permanently stuck. Once onError fired (transient failure during upload/busy server), the component showed the refresh placeholder. The "prevSrc !== src" reset only triggered when the src prop CHANGED, not when re-mounting or re-rendering with the SAME src. So if a product's image failed once, every time you opened that product's edit dialog, the component might still be in a stuck error state. The auto-retry (1.2s, once) sometimes wasn't enough if the server was momentarily busy.
+- Fix: rewrote src/components/store/product-image.tsx with a more robust strategy:
+  * Removed the fragile "store previous prop" pattern.
+  * Use a single `status` state: "loading" | "loaded" | "error".
+  * On ANY src change OR mount, immediately set status="loading" (always give the image a fresh chance).
+  * onLoad → status="loaded"; onError → status="error".
+  * Auto-retry up to 3 times with exponential backoff (300ms, 800ms, 1500ms) for transient failures.
+  * Cache-busting query param on retries (?retry=N) to force the browser to re-fetch instead of using a possibly-cached failed response.
+  * Click-to-retry on placeholder (with RefreshCw icon) resets attempts and retries.
+  * Only shows placeholder when status is "error" (and retries exhausted) or src is empty.
+  * When status="loading", shows a subtle Package placeholder behind the scenes (img is loading transparently on top), so there's no broken image flash.
+- Verified in browser: store front images all load (6/6 loaded, 0 broken). Admin Edit Product dialog for Toilet Cleaner shows the real product photo in the COVER thumbnail (naturalWidth 900), confirmed visually via VLM ("real product photo, not an empty placeholder").
+- Lint: clean (0 errors, 0 warnings).
+
+Stage Summary:
+- Root cause: ProductImage error state got permanently stuck after a transient load failure; the src-change reset only worked when src prop changed, not on re-mount with same src.
+- Fix: rewrote ProductImage with status-based state machine, always resets to "loading" on mount/src-change, auto-retries 3x with exponential backoff + cache-busting query param, click-to-retry.
+- Verified: store front 6/6 images load; admin edit dialog COVER thumbnail shows real product photo (naturalWidth 900), confirmed by VLM.
+- Files changed: src/components/store/product-image.tsx.
